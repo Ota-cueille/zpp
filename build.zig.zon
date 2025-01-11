@@ -1,0 +1,19 @@
+.{
+    .name = "lang",
+    .version = "0.0.0",
+
+    .dependencies = .{
+        //.example = .{
+        //    // When this is provided, the package is found in a directory relative to the
+        //    // build root. In this case the package's hash is irrelevant and therefore not
+        //    // computed. This field and `url` are mutually exclusive.
+        //    .path = "foo",
+        //},
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
