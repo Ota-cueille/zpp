@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const compiler = b.addExecutable(.{
-        .name = "langc",
+        .name = "zpp",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,

@@ -1,5 +1,5 @@
 const std = @import("std");
-const lexer = @import("lang/lexer.zig");
+const lexer = @import("zpp/lexer.zig");
 
 test lexer {
     const allocator = std.testing.allocator;

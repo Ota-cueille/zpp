@@ -1,6 +1,6 @@
 const std = @import("std");
 const ast = @import("../ast.zig");
-const utils = @import("../../utils/printer.zig");
+const utils = @import("../../utils.zig");
 
 const token = @import("../token.zig");
 
@@ -18,8 +18,8 @@ rhs: ast.node,
 
 pub fn create(allocator: std.mem.Allocator, infos: args) *binary_operator {
     const self = allocator.create(binary_operator) catch unreachable;
-    self.operator = infos.operator;
-    self.lhs = infos.lhs;
+    self.colon = infos.operator;
+    self.identifier = infos.lhs;
     self.rhs = infos.rhs;
     return self;
 }

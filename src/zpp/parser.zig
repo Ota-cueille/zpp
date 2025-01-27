@@ -3,9 +3,10 @@ const std = @import("std");
 const lexer = @import("lexer.zig");
 const token = @import("./token.zig");
 
+const utils = @import("../utils.zig");
+
 const ast = @import("ast.zig");
 const operator = @import("./operator.zig");
-const keyword = @import("./keywords.zig");
 
 pub fn parse(allocator: std.mem.Allocator, l: *lexer) ast.node {
     const program = ast.program.create(allocator, .{});
@@ -14,9 +15,9 @@ pub fn parse(allocator: std.mem.Allocator, l: *lexer) ast.node {
         const lookahead = l.peek();
         if (lookahead.kind == .eof) break;
 
-        const op = expression(allocator, l, 0);
+        const s = expression(allocator, l, 0);
 
-        program.add(allocator, op);
+        program.add(allocator, s);
     }
 
     return ast.node.from(ast.program, program);
@@ -43,27 +44,31 @@ fn consume_one_of(l: *lexer, comptime kinds: []const token.kind) token {
 }
 
 /// Implementation detail
-// fn declaration(allocator: std.mem.Allocator, l: *lexer) ast.node {
-//     const must_be_semicolon = consume(l, .symbol);
-//     std.debug.assert(must_be_semicolon.kind == .symbol and must_be_semicolon.content.len == 1 and must_be_semicolon.content[0] == ';');
-// }
+
+// fn statement(allocator: std.mem.Allocator, l: *lexer) ast.node {}
+
+fn declaration(allocator: std.mem.Allocator, l: *lexer) ast.node {
+    const identifier = consume(l, .identifier);
+
+    const lookahead = l.peek();
+    std.debug.assert(lookahead.kind == .symbol);
+
+    if (utils.convert(u16, lookahead.content) == comptime utils.convert(u16, ":=")) {
+        const sym = consume(l, .symbol);
+        const rhs = expression(allocator, l, 0);
+        return ast.node.create(ast.declaration, allocator, .{
+            .colon = sym,
+            .identifier = identifier,
+            .requested_T = null,
+            .rhs = rhs,
+        });
+    }
+
+    std.debug.assert(utils.convert(u16, lookahead.content) == ':');
+}
 
 fn is_open_parenthesis(tok: *const token) bool {
     return tok.kind == .symbol and tok.content.len == 1 and tok.content[0] == '(';
-}
-
-fn assignment(allocator: std.mem.Allocator, l: *lexer) ast.node {
-    const lhs = consume(l, .identifier);
-
-    const must_be_colon = consume(l, .symbol);
-    std.debug.assert(must_be_colon.content.len == 1 and must_be_colon.content[0] == ':');
-
-    const optional_type_identifier = l.peek();
-    if (optional_type_identifier.kind == .identifier) {}
-
-    const must_be_colon_or_equal = consume(l, .symbol);
-
-    return ast.node.create(ast.assignment, allocator, .{});
 }
 
 fn expression(allocator: std.mem.Allocator, l: *lexer, precedence: u64) ast.node {

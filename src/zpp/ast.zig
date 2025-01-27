@@ -14,7 +14,7 @@ pub const identifier = @import("./ast/identifier.zig");
 pub const binary_operator = @import("./ast/binary_opeartor.zig");
 
 // high level
-pub const assignment = @import("./ast/assignment.zig");
+pub const declaration = @import("./ast/declaration.zig");
 pub const program = @import("./ast/program.zig");
 
 pub const node = union(enum) {
@@ -31,7 +31,7 @@ pub const node = union(enum) {
     binary_operator: *binary_operator,
 
     // high level
-    assignment: *assignment,
+    declaration: *declaration,
     program: *program,
 
     pub fn print(self: *const node, writer: std.io.AnyWriter, depth: u16) void {
@@ -59,7 +59,7 @@ pub const node = union(enum) {
             binary_operator => node{ .binary_operator = ctx },
 
             // high level
-            assignment => node{ .assignment = ctx },
+            declaration => node{ .declaration = ctx },
             program => node{ .program = ctx },
 
             else => @compileError("Unknown ast.node type " ++ @typeName(T)),

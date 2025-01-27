@@ -1,5 +1,5 @@
 .{
-    .name = "lang",
+    .name = "zpp",
     .version = "0.0.0",
 
     .dependencies = .{

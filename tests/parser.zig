@@ -1,4 +1,4 @@
 const std = @import("std");
-const parser = @import("lang/parser.zig");
+const parser = @import("zpp/parser.zig");
 
 test parser {}

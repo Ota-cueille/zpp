@@ -2,9 +2,9 @@ const std = @import("std");
 
 const pretty = @import("ext/pretty.zig");
 
-const lexer = @import("lang/lexer.zig");
-const parser = @import("lang/parser.zig");
-const ast = @import("lang/ast.zig");
+const lexer = @import("zpp/lexer.zig");
+const parser = @import("zpp/parser.zig");
+const ast = @import("zpp/ast.zig");
 
 pub fn main() void {
     const source_filepath = "./examples/expressions.l";

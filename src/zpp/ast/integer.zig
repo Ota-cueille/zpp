@@ -1,6 +1,6 @@
 const std = @import("std");
 const ast = @import("../ast.zig");
-const utils = @import("../../utils/printer.zig");
+const utils = @import("../../utils.zig");
 
 const token = @import("../token.zig");
 

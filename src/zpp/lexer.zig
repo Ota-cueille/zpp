@@ -52,15 +52,17 @@ pub fn next(self: *lexer) token {
             // try to read an identifier
             'a'...'z', 'A'...'Z', '_' => self.identifier(),
 
+            // SYMBOLS ????
+
+            // simple single symbols
+            '(', ')', '{', '}', '[', ']', ',', '&', ';' => self.single_character_symbol(),
+
             // see if it is not possible to
             // separate number from '.' symbol
             '.' => self.dot_or_real_number(),
 
             // same as for '.'
             '/' => self.comment_or_division_related_operators() orelse continue,
-
-            // simple single symbols
-            '(', ')', '{', '}', '[', ']', ',', '&', ';' => self.single_character_symbol(),
 
             // keeping '@' for annotations
             // keeping '#' for compiler directives

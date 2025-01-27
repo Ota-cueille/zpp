@@ -1,4 +1,4 @@
-const enum_table = @import("../utils/enum_table.zig").enum_table;
+const utils = @import("../utils.zig");
 
 usingnamespace keywords;
 
@@ -19,5 +19,5 @@ pub const keywords = enum {
     true,
     false,
 
-    pub const table = enum_table(@This());
+    pub const table = utils.enum_table(@This());
 };

@@ -5,28 +5,40 @@ const token = @This();
 pub const kind = enum(u64) {
     symbol,
 
-    // (
-    // )
+    // open and close
+    // ()
+    // []
+    // {}
+    // maybe || ..
+    // maybe <> ??
 
-    // [
-    // ]
-
-    // {
-    // }
-
-    // .
+    // punctuation
+    // ,
     // ;
     // :
-    // ,
 
+    // operators
+    // .
+    // maybe @
+    // maybe &
+    // maybe #
+
+    // memory operators
+    // =
+    // +=
+    // -=
+    // *=
+    // /=
+
+    // mathematical operators
     // -
     // +
     // *
     // /
-    // &
-    // @
 
-    // =
+    // logical operators
+    // ||
+    // &&
     // !
     // ==
     // !=
@@ -35,7 +47,7 @@ pub const kind = enum(u64) {
     // >
     // <=
 
-    // compile time and hard written known values
+    // compile time known values
     literal,
 
     literal_character, // 'u', '😊', '\uE45F'
@@ -43,6 +55,7 @@ pub const kind = enum(u64) {
     literal_real, // 1., .0, 1.645, 2454.9
     literal_string, // "content"
 
+    // label which holds information : variable, function, type, keyword, operator, ...
     identifier,
 
     eof,
