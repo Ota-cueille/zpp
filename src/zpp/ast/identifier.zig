@@ -1,6 +1,6 @@
 const std = @import("std");
 const ast = @import("../ast.zig");
-const utils = @import("../../utils/printer.zig");
+const utils = @import("../../utils.zig");
 
 const token = @import("../token.zig");
 
@@ -11,11 +11,15 @@ pub const args = token;
 context: token,
 name: []const u8,
 
-pub fn create(allocator: std.mem.Allocator, infos: args) *identifier {
-    const self = allocator.create(identifier) catch unreachable;
+pub fn create(self: *identifier, infos: args) *identifier {
     self.context = infos;
     self.name = infos.content;
     return self;
+}
+
+pub fn alloc(allocator: std.mem.Allocator, infos: args) *identifier {
+    const self = allocator.create(identifier) catch unreachable;
+    return self.create(infos);
 }
 
 pub fn print(self: *const identifier, writer: std.io.AnyWriter, depth: u16) void {

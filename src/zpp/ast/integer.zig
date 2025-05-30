@@ -11,10 +11,15 @@ pub const args = token;
 context: token,
 value: u64,
 
-pub fn create(allocator: std.mem.Allocator, infos: args) *integer {
+pub fn alloc(allocator: std.mem.Allocator, infos: args) *integer {
     const self = allocator.create(integer) catch unreachable;
+    return self.create(infos);
+}
+
+pub fn create(self: *integer, infos: args) *integer {
     self.context = infos;
     self.value = std.fmt.parseInt(u64, infos.content, 10) catch unreachable;
+
     return self;
 }
 

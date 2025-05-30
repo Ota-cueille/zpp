@@ -7,7 +7,7 @@ const parser = @import("zpp/parser.zig");
 const ast = @import("zpp/ast.zig");
 
 pub fn main() void {
-    const source_filepath = "./examples/expressions.l";
+    const source_filepath = "./examples/functions.l";
 
     const buffer = read_all_file(std.heap.page_allocator, source_filepath);
     defer std.heap.page_allocator.free(buffer);

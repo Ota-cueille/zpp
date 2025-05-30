@@ -16,10 +16,14 @@ operator: token,
 lhs: ast.node,
 rhs: ast.node,
 
-pub fn create(allocator: std.mem.Allocator, infos: args) *binary_operator {
+pub fn alloc(allocator: std.mem.Allocator, infos: args) *binary_operator {
     const self = allocator.create(binary_operator) catch unreachable;
-    self.colon = infos.operator;
-    self.identifier = infos.lhs;
+    return self.create(infos);
+}
+
+pub fn create(self: *binary_operator, infos: args) *binary_operator {
+    self.operator = infos.operator;
+    self.lhs = infos.lhs;
     self.rhs = infos.rhs;
     return self;
 }

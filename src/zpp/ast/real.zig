@@ -1,6 +1,6 @@
 const std = @import("std");
 const ast = @import("../ast.zig");
-const utils = @import("../../utils/printer.zig");
+const utils = @import("../../utils.zig");
 
 const token = @import("../token.zig");
 
@@ -11,10 +11,15 @@ pub const args = token;
 context: token,
 value: f64,
 
-pub fn create(allocator: std.mem.Allocator, infos: args) *real {
+pub fn alloc(allocator: std.mem.Allocator, infos: args) *real {
     const self = allocator.create(real) catch unreachable;
+    return self.create(infos);
+}
+
+pub fn create(self: *real, infos: args) *real {
     self.context = infos;
     self.value = std.fmt.parseFloat(f64, infos.content) catch unreachable;
+
     return self;
 }
 

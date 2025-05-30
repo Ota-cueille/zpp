@@ -1,23 +1,23 @@
 const std = @import("std");
 
 const lexer = @import("lexer.zig");
-const token = @import("./token.zig");
+const token = @import("token.zig");
 
 const utils = @import("../utils.zig");
 
 const ast = @import("ast.zig");
-const operator = @import("./operator.zig");
+const operator = @import("operator.zig");
 
 pub fn parse(allocator: std.mem.Allocator, l: *lexer) ast.node {
-    const program = ast.program.create(allocator, .{});
+    const program = ast.program.alloc(allocator, .{});
 
     while (true) {
         const lookahead = l.peek();
         if (lookahead.kind == .eof) break;
 
-        const s = expression(allocator, l, 0);
+        const decl = function(allocator, l);
 
-        program.add(allocator, s);
+        program.add(allocator, decl);
     }
 
     return ast.node.from(ast.program, program);
@@ -44,45 +44,120 @@ fn consume_one_of(l: *lexer, comptime kinds: []const token.kind) token {
 }
 
 /// Implementation detail
+fn declaration(_: std.mem.Allocator, l: *lexer) ast.node {
+    // expect <identifier>
+    // const identifier = consume(l, .identifier);
 
-// fn statement(allocator: std.mem.Allocator, l: *lexer) ast.node {}
+    // expect '::'
+    const must_be_colons = consume(l, .symbol);
+    std.debug.assert(std.mem.eql(u8, must_be_colons.content, "::"));
 
-fn declaration(allocator: std.mem.Allocator, l: *lexer) ast.node {
+    // can be any of: <expression>, <function>, <struct>, <enum>, <union>
+}
+
+fn function(allocator: std.mem.Allocator, l: *lexer) ast.node {
+    // expect <identifier>
     const identifier = consume(l, .identifier);
 
-    const lookahead = l.peek();
-    std.debug.assert(lookahead.kind == .symbol);
+    // expect '::'
+    const must_be_colons = consume(l, .symbol);
+    std.debug.assert(std.mem.eql(u8, must_be_colons.content, "::"));
 
-    if (utils.convert(u16, lookahead.content) == comptime utils.convert(u16, ":=")) {
-        const sym = consume(l, .symbol);
-        const rhs = expression(allocator, l, 0);
-        return ast.node.create(ast.declaration, allocator, .{
-            .colon = sym,
-            .identifier = identifier,
-            .requested_T = null,
-            .rhs = rhs,
+    // expect '('
+    const must_be_open_parenthesis = consume(l, .symbol);
+    std.debug.assert(must_be_open_parenthesis.content[0] == '(');
+
+    var parameters = std.ArrayList(ast.parameter).init(allocator);
+
+    var previous: ?token = null;
+    while (l.peek().kind != .symbol) : (previous = consume(l, .symbol)) {
+        // allocate one parameter
+        const parameter = parameters.addOne() catch unreachable;
+
+        const parameter_identifier_token = consume(l, .identifier);
+
+        const must_be_colon = consume(l, .symbol);
+        std.debug.assert(must_be_colon.content[0] == ':');
+
+        const parameter_type_token = consume(l, .identifier);
+
+        _ = parameter.create(.{
+            .colon = must_be_colon,
+            .identifier = parameter_identifier_token,
+            .type = parameter_type_token,
         });
     }
 
-    std.debug.assert(utils.convert(u16, lookahead.content) == ':');
+    // expect ')'
+    // it is possible for the previous loop to eat the last
+    // symbol which should be ')' so we check for that
+    previous = if (previous == null) consume(l, .symbol) else previous;
+    std.debug.assert(previous.?.content[0] == ')');
+
+    // expect '{'
+    const must_be_open_brace = consume(l, .symbol);
+    std.debug.assert(must_be_open_brace.content[0] == '{');
+
+    var tempArena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    const tempAllocator = tempArena.allocator();
+
+    var expressions = std.ArrayList(ast.node).init(tempAllocator);
+    defer expressions.deinit();
+
+    while (l.peek().kind != .symbol or l.peek().content[0] != '}') {
+        expressions.append(expression(allocator, l, 0)) catch unreachable;
+
+        const must_be_colon = consume(l, .symbol);
+        std.debug.assert(must_be_colon.content[0] == ';');
+    }
+
+    const body = allocator.alloc(ast.node, expressions.items.len) catch unreachable;
+    std.mem.copyForwards(ast.node, body, expressions.items);
+
+    // expect '}'
+    const must_be_close_brace = consume(l, .symbol);
+    std.debug.assert(must_be_close_brace.content[0] == '}');
+
+    return ast.node.alloc(ast.function, allocator, .{
+        .identifier = identifier,
+        .parameters = parameters.toOwnedSlice() catch unreachable,
+        .body = expressions.toOwnedSlice() catch unreachable,
+    });
 }
 
-fn is_open_parenthesis(tok: *const token) bool {
-    return tok.kind == .symbol and tok.content.len == 1 and tok.content[0] == '(';
+fn call(allocator: std.mem.Allocator, l: *lexer) ast.node {
+    // expect <identifier>
+    const identifier = consume(l, .identifier);
+
+    // expect '('
+    const must_be_open_parenthesis = consume(l, .symbol);
+    std.debug.assert(must_be_open_parenthesis.content[0] == '(');
+
+    // expressions
+
+    // expect ')'
+    const must_be_close_parenthesis = consume(l, .symbol);
+    std.debug.assert(must_be_close_parenthesis.content[0] == ')');
+
+    return ast.node.alloc(ast.call, allocator, .{ identifier, &[_]ast.node{} });
 }
 
 fn expression(allocator: std.mem.Allocator, l: *lexer, precedence: u64) ast.node {
     var lhs = init: {
         const lookahead = l.peek();
-        if (is_open_parenthesis(&lookahead)) {
+
+        // at this point, the token is eather a literal, an identifier, an open parenthesis or a unary operator
+        if (lookahead.kind == .symbol and lookahead.content[0] == '(') {
             _ = consume(l, .symbol);
 
             const parenthesized_expression = expression(allocator, l, 0);
 
             const must_be_close_parenthesis = consume(l, .symbol);
-            std.debug.assert(must_be_close_parenthesis.content.len == 1 and must_be_close_parenthesis.content[0] == ')');
+            std.debug.assert(must_be_close_parenthesis.content[0] == ')');
 
             break :init parenthesized_expression;
+        } else if (lookahead.kind == .symbol and operator.is_unary(lookahead.content)) {
+            break :init unary(allocator, l);
         }
 
         break :init literal_or_identifier(allocator, l);
@@ -92,17 +167,22 @@ fn expression(allocator: std.mem.Allocator, l: *lexer, precedence: u64) ast.node
         const expr = parse_with_precedence: {
             const lookahead = l.peek();
 
-            if (lookahead.kind != .symbol or !operator.exists(lookahead.content))
-                break :parse_with_precedence lhs;
-
-            const next_precedence = operator.get_precedence(lookahead);
+            const next_precedence = compute_next_precedence: {
+                if (lookahead.kind != .symbol) break :parse_with_precedence lhs;
+                const op = operator.from_slice(lookahead.content) orelse break :parse_with_precedence lhs;
+                break :compute_next_precedence operator.precedence(op, false);
+            };
 
             if (next_precedence <= precedence) {
                 break :parse_with_precedence lhs;
             } else {
                 const tok_operator = consume(l, .symbol);
                 const rhs = expression(allocator, l, next_precedence);
-                break :parse_with_precedence ast.node.create(ast.binary_operator, allocator, .{ .lhs = lhs, .rhs = rhs, .operator = tok_operator });
+                break :parse_with_precedence ast.node.alloc(ast.binary_operator, allocator, .{
+                    .lhs = lhs,
+                    .rhs = rhs,
+                    .operator = tok_operator,
+                });
             }
         };
 
@@ -115,17 +195,42 @@ fn expression(allocator: std.mem.Allocator, l: *lexer, precedence: u64) ast.node
     return lhs;
 }
 
+fn unary(allocator: std.mem.Allocator, l: *lexer) ast.node {
+    const tok_operator = consume(l, .symbol);
+    const lookahead = l.peek();
+
+    const operand = init: {
+        if (lookahead.kind == .symbol and lookahead.content[0] == '(') {
+            // eat the '('
+            _ = consume(l, .symbol);
+
+            const expr = expression(allocator, l, 0);
+
+            // eat the ')'
+            const must_be_close_parenthesis = consume(l, .symbol);
+            std.debug.assert(must_be_close_parenthesis.content[0] == ')');
+
+            break :init expr;
+        } else break :init literal_or_identifier(allocator, l);
+    };
+
+    return ast.node.alloc(ast.unary_operator, allocator, .{
+        .operator = tok_operator,
+        .expression = operand,
+    });
+}
+
 fn literal_or_identifier(allocator: std.mem.Allocator, l: *lexer) ast.node {
     const tok = consume_one_of(l, &[_]token.kind{ .identifier, .literal_integer, .literal_real, .literal_character, .literal_string });
     return switch (tok.kind) {
         // literals
-        .literal_integer => ast.node.create(ast.integer, allocator, tok),
-        .literal_real => ast.node.create(ast.real, allocator, tok),
-        .literal_character => ast.node.create(ast.character, allocator, tok),
-        .literal_string => ast.node.create(ast.string, allocator, tok),
+        .literal_integer => ast.node.alloc(ast.integer, allocator, tok),
+        .literal_real => ast.node.alloc(ast.real, allocator, tok),
+        .literal_character => ast.node.alloc(ast.character, allocator, tok),
+        .literal_string => ast.node.alloc(ast.string, allocator, tok),
 
         // identifiers and shit
-        .identifier => ast.node.create(ast.identifier, allocator, tok),
+        .identifier => ast.node.alloc(ast.identifier, allocator, tok),
 
         else => unreachable,
     };
