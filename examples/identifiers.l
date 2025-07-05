@@ -1,3 +1,0 @@
-one_identifier
-twoIdentifiers
-ident_3_with_numbers45

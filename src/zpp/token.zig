@@ -1,62 +1,19 @@
 const token = @This();
 
-// tokens are for lexical analysis
-// behaviour is for sementic analysis
 pub const kind = enum(u64) {
     symbol,
-
-    // open and close
-    // ()
-    // []
-    // {}
-    // maybe || ..
-    // maybe <> ??
-
-    // punctuation
+    // ::
+    // (
+    // )
+    // {
+    // }
     // ,
-    // ;
-    // :
-
-    // operators
-    // .
-    // maybe @
-    // maybe &
-    // maybe #
-
-    // memory operators
-    // =
-    // +=
-    // -=
-    // *=
-    // /=
-
-    // mathematical operators
-    // -
-    // +
-    // *
-    // /
-
-    // logical operators
-    // ||
-    // &&
-    // !
-    // ==
-    // !=
-    // <
-    // >=
-    // >
-    // <=
-
-    // compile time known values
-    literal,
-
-    literal_character, // 'u', '😊', '\uE45F'
-    literal_integer, // 1, 2, 456
-    literal_real, // 1., .0, 1.645, 2454.9
-    literal_string, // "content"
 
     // label which holds information : variable, function, type, keyword, operator, ...
     identifier,
+
+    // literals
+    integer_literal,
 
     eof,
 };

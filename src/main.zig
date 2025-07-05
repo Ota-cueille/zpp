@@ -2,12 +2,10 @@ const std = @import("std");
 
 const pretty = @import("ext/pretty.zig");
 
-const lexer = @import("zpp/lexer.zig");
-const parser = @import("zpp/parser.zig");
-const ast = @import("zpp/ast.zig");
+const zpp = @import("zpp.zig");
 
 pub fn main() void {
-    const source_filepath = "./examples/functions.l";
+    const source_filepath = "./examples/all.zpp";
 
     const buffer = read_all_file(std.heap.page_allocator, source_filepath);
     defer std.heap.page_allocator.free(buffer);
@@ -16,8 +14,9 @@ pub fn main() void {
     var ast_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer ast_arena.deinit();
 
-    var l: lexer = lexer.initialize(buffer);
-    const root = parser.parse(ast_arena.allocator(), &l);
+    var lexer: zpp.lexer = zpp.lexer.initialize(buffer);
+    var parser: zpp.parser = zpp.parser.initialize(std.heap.page_allocator, &lexer);
+    const root = parser.parse(ast_arena.allocator());
 
     std.log.info("program has been parsed successfully !", .{});
 

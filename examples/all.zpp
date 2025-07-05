@@ -1,0 +1,26 @@
+/**
+ * Multiline comments
+ */
+
+// single line comments
+
+/**
+ *  ## ---- # Functions # ---- ##
+ *  ##                         ##
+ *  ## ---- ############# ---- ##
+ */
+
+main :: (a: int, b: float) void {
+
+}
+
+foo :: () MyCustomType {
+
+}
+
+bar :: (a: u32, lot: i32, of: MyCustomType, parameters: f32) int {
+
+}
+
+my_expression :: 5;
+// my_expression_2 :: my_expression - 5;
