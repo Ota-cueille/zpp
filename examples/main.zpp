@@ -12,7 +12,7 @@
 
 MyCustomType :: struct {
     field1: u32;
-    field2: f32 = 0.0f;
+    field2: f32 = 0.0;
 }
 
 main :: (a: int, b: float) void {
@@ -28,4 +28,4 @@ bar :: (a: u32, lot: i32, of: MyCustomType, parameters: f32) int {
 }
 
 my_expression :: 5;
-// my_expression_2 :: my_expression - 5;
+my_expression_2 :: my_expression - 5;
