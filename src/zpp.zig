@@ -30,7 +30,18 @@ pub fn main() void {
         std.log.err("Lexer could not be initialized properly with file `./examples/main.zig`! Error was: {}!", .{e});
     };
 
-    std.log.info("program has been lexed successfully !", .{});
+    while (lexer.current.kind != .eof) {
+        if (lexer.current.kind == .symbol and lexer.current.meta.symbol.is("::")) {
+            std.log.info("constant declaration !", .{});
+        }
+
+        lexer.next() catch {
+            std.log.err("Compiler Error at l.{}:c.{} : {s}", .{ lexer.error_context.at.line, lexer.error_context.at.column, lexer.error_context.message });
+            return;
+        };
+    }
+
+    std.log.info(" ---- program has been lexed successfully ! ---- ", .{});
 }
 
 fn read_all_file(allocator: std.mem.Allocator, filepath: []const u8) []u8 {
