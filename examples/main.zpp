@@ -17,15 +17,25 @@ MyCustomType :: struct {
 
 main :: (a: int, b: float) void {
 
+    if ((true or false) and a > 0) xor false {
+        result := foo();
+        print(result.field1);
+    } else {
+        result : int = bar(a, -4095, foo(), 42.69);
+        print(result);
+    }
+
+    my_array := u32[ 0, 4, 5, 6, 84, 55741, 26544 ];
+
+    for val := my_array {
+        print(val);
+    }
+
 }
 
-foo :: () MyCustomType {
+foo :: () MyCustomType { return MyCustomType { .field1 = 4096 }; }
 
-}
-
-bar :: (a: u32, lot: i32, of: MyCustomType, parameters: f32) int {
-
-}
+bar :: (a: u32, lot: i32, of: MyCustomType, parameters: f32) int { return 0; }
 
 my_expression :: 5;
 my_expression_2 :: my_expression - 5;
