@@ -26,13 +26,11 @@ pub fn main() void {
     defer std.heap.page_allocator.free(buffer);
 
     var lexer: zpp.lexer = undefined;
-    lexer.initialize(buffer) catch |e| {
-        std.log.err("Lexer could not be initialized properly with file `./examples/main.zig`! Error was: {}!", .{e});
-    };
+    lexer.initialize(buffer) catch |e| std.log.err("Lexer could not be initialized properly with file `./examples/main.zig`! Error was: {}!", .{e});
 
     while (lexer.current.kind != .eof) {
-        if (lexer.current.kind == .symbol and lexer.current.meta.symbol.is("::")) {
-            std.log.info("constant declaration !", .{});
+        if (lexer.current.kind == .keyword) {
+            std.log.info("keyword: {s}", .{lexer.current.content});
         }
 
         lexer.next() catch {
