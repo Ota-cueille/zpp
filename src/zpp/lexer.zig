@@ -43,6 +43,11 @@ pub fn initialize(self: *lexer, source: []const u8) Elexer!void {
     self.source = source;
     self.current_source = self.source;
 
+    self.start.line = 1;
+    self.start.column = 1;
+    self.end.line = 1;
+    self.end.column = 1;
+
     for (0..LOOKAHEAD + 1) |_| {
         _ = try self.next();
     }
@@ -60,7 +65,7 @@ pub fn next(self: *lexer) Elexer!void {
     const lookahead = self.current_source[0];
 
     switch (lookahead) {
-        'a'...'z', 'A'...'Z', '_' => self.identifier(),
+        'a'...'z', 'A'...'Z', '_' => self.identifier_or_keyword(),
         '0'...'9' => self.number(),
         '"' => try self.string(),
         else => self.symbol(),
@@ -89,6 +94,10 @@ fn shift(self: *lexer, new: token) void {
     slice[slice.len - 1] = new;
 }
 
+fn check(self: *const lexer, character: u8) bool {
+    return self.current_source.len != 0 and self.current_source[0] == character;
+}
+
 fn preview(self: *const lexer, str: []const u8) bool {
     const until = @min(self.current_source.len, str.len);
     return std.mem.eql(u8, str, self.current_source[0..until]);
@@ -98,7 +107,7 @@ fn advance(self: *lexer) void {
     std.debug.assert(self.current_source.len != 0);
 
     if (self.current_source[0] == '\n') {
-        self.end.column = 0;
+        self.end.column = 1;
         self.end.line += 1;
     } else {
         self.end.column += 1;
@@ -109,7 +118,7 @@ fn advance(self: *lexer) void {
 }
 
 fn consume(self: *lexer, comptime character: u8) void {
-    std.debug.assert(self.current_source.len != 0 and self.current_source[0] == character);
+    std.debug.assert(self.check(character));
     self.advance();
 }
 
@@ -162,16 +171,23 @@ fn is_character_valid_identifier(character: u8) bool {
     };
 }
 
-fn identifier(self: *lexer) void {
+fn identifier_or_keyword(self: *lexer) void {
     while (self.consume_if(is_character_valid_identifier) or self.consume_if(std.ascii.isDigit)) {}
-    self.shift(self.create(.identifier));
+
+    var tok = self.create(.identifier);
+    if (token.keyword.table.get(tok.content)) |kw| {
+        tok.kind = .keyword;
+        tok.meta = .{ .keyword = kw };
+    }
+
+    self.shift(tok);
 }
 
 fn number(self: *lexer) void {
     while (self.consume_if(std.ascii.isDigit)) {}
 
     // it may be an integer or a floating point literal
-    if (self.current_source[0] != '.') {
+    if (!self.check('.')) {
         var integer = self.create(.literal);
         integer.meta = .{ .literal = .integer };
         self.shift(integer);
@@ -198,7 +214,7 @@ fn string(self: *lexer) Elexer!void {
     self.consume('"');
 
     var is_escaped = false;
-    while (self.current_source[0] != '"' or is_escaped) {
+    while (!self.check('"') or is_escaped) {
         if (self.current_source.len == 0) {
             self.error_context.at = self.end;
             self.error_context.message = "unexpected EOF inside string literal";
@@ -234,7 +250,7 @@ fn create_symbol(self: *lexer, comptime symbol_character_count: u3) token {
 fn symbol(self: *lexer) void {
     const tok = switch (self.current_source[0]) {
         // one character
-        ',', ';', '(', ')', '[', ']', '{', '}' => self.create_symbol(1),
+        '.', ',', ';', '(', ')', '[', ']', '{', '}' => self.create_symbol(1),
 
         // optionally two characters
         ':' => if (self.preview("::") or self.preview(":=")) self.create_symbol(2) else self.create_symbol(1),

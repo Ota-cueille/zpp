@@ -4,11 +4,33 @@ const token = @This();
 
 pub const location = struct { offset: u32 = 0, line: u32 = 0, column: u32 = 0 };
 
-pub const kind = enum(u8) { identifier, literal, symbol, eof };
+pub const kind = enum(u8) { identifier, keyword, literal, symbol, eof };
+
+pub const keyword = enum(u56) {
+    // values
+    @"and" = utils.encode("and", 3),
+    @"or" = utils.encode("or", 2),
+    xor = utils.encode("xor", 3),
+
+    // control flow
+    @"if" = utils.encode("if", 2),
+    @"else" = utils.encode("else", 4),
+
+    @"for" = utils.encode("for", 3),
+
+    @"struct" = utils.encode("struct", 6),
+    @"enum" = utils.encode("enum", 4),
+    @"union" = utils.encode("union", 5),
+
+    pub const table = utils.enumhash(@This());
+};
+
 pub const literal = enum(u56) { integer, real, string, character };
 pub const symbol = enum(u56) {
     bind = utils.encode("::", 2),
     declare = utils.encode(":=", 2),
+
+    resolve = utils.encode(".", 1),
 
     assign = utils.encode("=", 1),
     add_assign = utils.encode("+=", 2),
@@ -49,13 +71,14 @@ pub const symbol = enum(u56) {
 
 pub const flags = packed struct(u56) {
     reserved: u56 = 0,
-    //     is_compile_time: bool = false,
-    //     is_macro_generated: bool = false,
+    // is_compile_time: bool = false,
+    // is_macro_generated: bool = false,
 };
 
 kind: kind,
 meta: union(enum) {
     none,
+    keyword: keyword,
     literal: literal,
     symbol: symbol,
     flags: flags,
