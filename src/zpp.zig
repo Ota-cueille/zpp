@@ -2,6 +2,8 @@ const std = @import("std");
 
 const zpp = struct {
     const lexer = @import("zpp/lexer.zig");
+    const parser = @import("zpp/parser.zig");
+    const ast = @import("zpp/ast.zig");
 };
 
 ///
@@ -25,19 +27,16 @@ pub fn main() void {
     const buffer = read_all_file(std.heap.page_allocator, source_filepath);
     defer std.heap.page_allocator.free(buffer);
 
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+
     var lexer: zpp.lexer = undefined;
-    lexer.initialize(buffer) catch |e| std.log.err("Lexer could not be initialized properly with file `./examples/main.zig`! Error was: {}!", .{e});
+    lexer.initialize(buffer) catch |e| {
+        std.log.err("Lexer could not be initialized properly with file `./examples/main.zig`! Error was: {}!", .{e});
+        return;
+    };
 
-    while (lexer.current.kind != .eof) {
-        if (lexer.current.kind == .keyword) {
-            std.log.info("keyword: {s}", .{lexer.current.content});
-        }
-
-        lexer.next() catch {
-            std.log.err("Compiler Error at l.{}:c.{} : {s}", .{ lexer.error_context.at.line, lexer.error_context.at.column, lexer.error_context.message });
-            return;
-        };
-    }
+    var parser = zpp.parser.initialize(arena.allocator(), lexer);
+    parser.parse() catch |e| std.log.err("An error has occured while parsing : {}", .{e});
 
     std.log.info(" ---- program has been lexed successfully ! ---- ", .{});
 }
