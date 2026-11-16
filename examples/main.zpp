@@ -1,0 +1,21 @@
+@entry main :: () void {
+    my_check := true and false or true;
+
+    if my_check {
+        print("digit list is: {}, {}, {}\n", 1, 2, 3)
+    } else if (my_check or true) {
+        my_check = false;
+    } else {
+        real_value := 3.141582 * 5.0 + 8.4512 / 5;
+    }
+
+    counter := 0;
+    for (counter = counter + 1) {
+        if counter > 5 { break; }
+    }
+}
+
+print :: (parameter1: i32, parameter2: bool) success: bool, value: u64 {
+    success = parameter2;
+    value = if parameter1 < 0 { -parameter1 } else { parameter2 };
+}
