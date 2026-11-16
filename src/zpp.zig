@@ -3,6 +3,12 @@ const std = @import("std");
 const zpp = struct {
     const token = @import("zpp/token.zig");
     const lexer = @import("zpp/lexer.zig");
+    const parser = @import("zpp/parser.zig");
+    const ast = @import("zpp/ast.zig");
+
+    const pass = struct {
+        const print = @import("zpp/pass/print.zig").print;
+    };
 };
 
 // 4 Mo of memory to store the source code.
@@ -12,6 +18,10 @@ var source_allocator = std.heap.FixedBufferAllocator.init(&source_memory);
 // 4 Mo of memory to store the tokens.
 var token_memory: [4 * 1024 * 1024]u8 = undefined;
 var token_allocator = std.heap.FixedBufferAllocator.init(&token_memory);
+
+// 4 Mo of memory to store the AST nodes.
+var ast_memory: [4 * 1024 * 1024]u8 = undefined;
+var ast_allocator = std.heap.FixedBufferAllocator.init(&ast_memory);
 
 ///
 /// This function is the entry point of the compiler's CLI.
@@ -37,21 +47,58 @@ pub fn main() void {
     var lexer = zpp.lexer.initialize(source);
     const tokens = lex_all_source(token_allocator.allocator(), &lexer);
 
-    std.debug.print("generated {} tokens\n", .{tokens.len});
-    std.log.info(" ---- program has been lexed successfully ! ---- ", .{});
+    var parser = zpp.parser.initialize(tokens);
+    parse_all_tokens(ast_allocator.allocator(), &parser);
 
-    std.debug.print("\n", .{});
-    std.log.info("Here are some data:", .{});
-    std.log.info("  - Datastructures:", .{});
-    std.log.info("    - sizeof(zpp.lexer) = {d}o", .{@sizeOf(zpp.lexer)});
+    {
+        std.debug.print("generated {} tokens\n", .{tokens.len});
+        std.log.info(" ---- program has been lexed successfully ! ---- ", .{});
 
-    std.debug.print("\n", .{});
-    std.log.info("    - sizeof(zpp.token) = {d}o", .{@sizeOf(zpp.token)});
+        std.debug.print("\n", .{});
+        std.log.info("Here are some data:", .{});
+        std.log.info("  - Datastructures:", .{});
+        std.log.info("    - sizeof(zpp.lexer) = {d}o", .{@sizeOf(zpp.lexer)});
+        std.log.info("    - sizeof(zpp.parser) = {d}o", .{@sizeOf(zpp.parser)});
 
-    std.debug.print("\n", .{});
-    std.log.info("  - allocators;", .{});
-    std.log.info("    - source: {}o", .{source_allocator.end_index});
-    std.log.info("    - token: {}o", .{token_allocator.end_index});
+        std.debug.print("\n", .{});
+        std.log.info("    - sizeof(zpp.token) = {d}o", .{@sizeOf(zpp.token)});
+
+        std.log.info("    - sizeof(zpp.ast.node) = {d}o", .{@sizeOf(zpp.ast.node)});
+        std.log.info("    - sizeof(zpp.ast.node.unary) = {d}o", .{@sizeOf(zpp.ast.unary)});
+        std.log.info("    - sizeof(zpp.ast.node.binary) = {d}o", .{@sizeOf(zpp.ast.binary)});
+        std.log.info("    - sizeof(zpp.ast.node.call) = {d}o", .{@sizeOf(zpp.ast.call)});
+        std.log.info("    - sizeof(zpp.ast.node.block) = {d}o", .{@sizeOf(zpp.ast.block)});
+        std.log.info("    - sizeof(zpp.ast.node.conditional_branch) = {d}o", .{@sizeOf(zpp.ast.conditional_branch)});
+        std.log.info("    - sizeof(zpp.ast.node.block_branch) = {d}o", .{@sizeOf(zpp.ast.block_branch)});
+        std.log.info("    - sizeof(zpp.ast.node.function_return) = {d}o", .{@sizeOf(zpp.ast.function_return)});
+        std.log.info("    - sizeof(zpp.ast.node.function) = {d}o", .{@sizeOf(zpp.ast.function)});
+        std.log.info("    - sizeof(zpp.ast.node.type) = {d}o", .{@sizeOf(zpp.ast.type)});
+        std.log.info("    - sizeof(zpp.ast.node.directive) = {d}o", .{@sizeOf(zpp.ast.directive)});
+
+        std.debug.print("\n", .{});
+        std.log.info("  - allocators;", .{});
+        std.log.info("    - source: {}o", .{source_allocator.end_index});
+        std.log.info("    - token: {}o", .{token_allocator.end_index});
+        std.log.info("    - ast: {}o", .{ast_allocator.end_index});
+
+        const character_count = source.len;
+        const token_count = tokens.len;
+        const ast_node_count = parser.ast_node_count;
+
+        const source_file_size_ko = @as(f64, @floatFromInt(source.len)) / 1000.0;
+        const token_size_ko = @as(f64, @floatFromInt(tokens.len * @sizeOf(zpp.token))) / 1000.0;
+        const ast_size_ko = (@as(f64, @floatFromInt(parser.ast_node_count * @sizeOf(zpp.ast.node))) + @as(f64, @floatFromInt(parser.ast_function_parameter_node_count * @sizeOf(zpp.ast.function.parameter))) + @as(f64, @floatFromInt(parser.ast_function_return_node_count * @sizeOf(zpp.ast.function.return_type)))) / 1000.0;
+
+        const ratio_token_source_size = token_size_ko / source_file_size_ko;
+
+        std.debug.print("\n", .{});
+        std.log.info("  - buffers:", .{});
+        std.log.info("    - source: {}Ko, {} characters", .{ source_file_size_ko, character_count });
+        std.log.info("    - tokens: {}Ko, {} tokens [source size -> token size x {}]", .{ token_size_ko, token_count, ratio_token_source_size });
+        std.log.info("    - ast: {}Ko, {} nodes [source size -> ast size x {}, token size -> ast size {}]", .{ ast_size_ko, ast_node_count, ast_size_ko / source_file_size_ko, ast_size_ko / token_size_ko });
+        std.log.info("      - ast.function.parameters: {}", .{parser.ast_function_parameter_node_count});
+        std.log.info("      - ast.function.returns: {}", .{parser.ast_function_return_node_count});
+    }
 }
 
 fn read_all_file(allocator: std.mem.Allocator, filepath: []const u8) []u8 {
@@ -83,4 +130,12 @@ fn lex_all_source(allocator: std.mem.Allocator, lexer: *zpp.lexer) []zpp.token {
 fn could_not_lex_all_file(e: anyerror) noreturn {
     std.log.err("An error has occured lexing file: {}", .{e});
     unreachable;
+}
+
+fn parse_all_tokens(allocator: std.mem.Allocator, parser: *zpp.parser) void {
+    var lookahead = parser.lookahead();
+    while (lookahead.k != .eof) : (lookahead = parser.lookahead()) {
+        const top_level_construct = parser.next(allocator);
+        zpp.pass.print(top_level_construct);
+    }
 }
