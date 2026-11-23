@@ -8,20 +8,29 @@ const zpp = struct {
 
     const pass = struct {
         const print = @import("zpp/pass/print.zig").print;
+        const symbols = @import("zpp/pass/symbols.zig");
     };
 };
 
-// 4 Mo of memory to store the source code.
+// 4 Mib of memory to store the source code.
 var source_memory: [4 * 1024 * 1024]u8 = undefined;
 var source_allocator = std.heap.FixedBufferAllocator.init(&source_memory);
 
-// 4 Mo of memory to store the tokens.
+// 4 Mib of memory to store the tokens.
 var token_memory: [4 * 1024 * 1024]u8 = undefined;
 var token_allocator = std.heap.FixedBufferAllocator.init(&token_memory);
 
-// 4 Mo of memory to store the AST nodes.
+// 4 Mib of memory to store the AST nodes.
 var ast_memory: [4 * 1024 * 1024]u8 = undefined;
 var ast_allocator = std.heap.FixedBufferAllocator.init(&ast_memory);
+
+// 1 Kib of memory to store the global declarations.
+var global_item_list_memory: [1 * 1024]u8 = undefined;
+var global_item_list_allocator = std.heap.FixedBufferAllocator.init(&global_item_list_memory);
+
+// 4 Mib of memory to store the symbol table.
+var symbol_memory: [4 * 1024 * 1024]u8 = undefined;
+var symbol_allocator = std.heap.FixedBufferAllocator.init(&symbol_memory);
 
 ///
 /// This function is the entry point of the compiler's CLI.
@@ -48,7 +57,20 @@ pub fn main() void {
     const tokens = lex_all_source(token_allocator.allocator(), &lexer);
 
     var parser = zpp.parser.initialize(tokens);
-    parse_all_tokens(ast_allocator.allocator(), &parser);
+    const top_level_items = parse_all_tokens(ast_allocator.allocator(), &parser);
+
+    for (top_level_items) |item| {
+        zpp.pass.print(item);
+    }
+
+    // generate symbols table
+    const global_stackframe = symbol_allocator.allocator().create(zpp.pass.symbols.table) catch unreachable;
+    global_stackframe.parent = global_stackframe;
+    global_stackframe.symbols = std.StringHashMap(zpp.pass.symbols.table.symbol).init(symbol_allocator);
+
+    for (top_level_items) |item| {
+        zpp.pass.symbols.visit(global_stackframe, item, symbol_allocator);
+    }
 
     {
         std.debug.print("generated {} tokens\n", .{tokens.len});
@@ -132,10 +154,20 @@ fn could_not_lex_all_file(e: anyerror) noreturn {
     unreachable;
 }
 
-fn parse_all_tokens(allocator: std.mem.Allocator, parser: *zpp.parser) void {
+fn parse_all_tokens(allocator: std.mem.Allocator, parser: *zpp.parser) []*zpp.ast.node {
+    const what = global_item_list_allocator.allocator();
+
+    var top_level_items = std.ArrayList(*zpp.ast.node).initCapacity(what, 0) catch unreachable;
     var lookahead = parser.lookahead();
     while (lookahead.k != .eof) : (lookahead = parser.lookahead()) {
-        const top_level_construct = parser.next(allocator);
-        zpp.pass.print(top_level_construct);
+        what.resize(top_level_items, top_level_items.len + 1) orelse could_not_parse_all_file();
+        top_level_items.append(what, parser.next(allocator)) catch |e| could_not_parse_all_file(e);
     }
+
+    return top_level_items.items;
+}
+
+fn could_not_parse_all_file(e: anyerror) noreturn {
+    std.log.err("An error has occured parsing file: {}", .{e});
+    unreachable;
 }
